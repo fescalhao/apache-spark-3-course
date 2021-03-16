@@ -32,7 +32,8 @@ object HelloSpark extends Serializable {
     logger.info(countDF.collect().mkString("->"))
 
     logger.info("Finished Hello Spark")
-    scala.io.StdIn.readLine()
+//    Used to check the Spark UI at localhost:4040
+//    scala.io.StdIn.readLine()
     spark.stop()
   }
 
