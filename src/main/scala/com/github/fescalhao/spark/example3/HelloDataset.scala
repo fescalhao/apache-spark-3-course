@@ -18,7 +18,7 @@ object HelloDataset extends Serializable {
       System.exit(1)
     }
 
-    val spark = new SparkSession.Builder()
+    val spark = SparkSession.builder()
       .config(getSparkConf)
       .getOrCreate()
 
