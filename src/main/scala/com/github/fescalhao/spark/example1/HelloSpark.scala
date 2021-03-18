@@ -1,11 +1,8 @@
 package com.github.fescalhao.spark.example1
 
+import com.github.fescalhao.SparkConfigUtils.getSparkConf
 import org.apache.log4j.Logger
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
-import java.util.Properties
-import scala.io.Source
 
 object HelloSpark extends Serializable {
 
@@ -20,7 +17,7 @@ object HelloSpark extends Serializable {
 
     logger.info("Starting Hello Spark")
     val spark = SparkSession.builder()
-      .config(getSparkConf)
+      .config(getSparkConf("Hello Spark"))
       .getOrCreate()
 
     // Process data
@@ -35,17 +32,6 @@ object HelloSpark extends Serializable {
 //    Used to check the Spark UI at localhost:4040
 //    scala.io.StdIn.readLine()
     spark.stop()
-  }
-
-  def getSparkConf: SparkConf = {
-    val sparkConf = new SparkConf()
-    val props = new Properties()
-    props.load(Source.fromFile("spark.conf").bufferedReader())
-    props.forEach((x, y) =>
-      sparkConf.set(x.toString, y.toString)
-    )
-
-    sparkConf
   }
 
   def loadSampleDF(spark: SparkSession, dataFile: String): DataFrame = {

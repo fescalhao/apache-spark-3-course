@@ -1,10 +1,8 @@
 package com.github.fescalhao.spark.example2
 
+import com.github.fescalhao.SparkConfigUtils.getSparkConf
 import org.apache.log4j.Logger
-import org.apache.spark.{SparkConf, SparkContext}
-
-import java.util.Properties
-import scala.io.Source
+import org.apache.spark.SparkContext
 
 object HelloRDD extends Serializable {
   @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
@@ -16,7 +14,7 @@ object HelloRDD extends Serializable {
       System.exit(1)
     }
 
-    val sparkContext = new SparkContext(getSparkConf)
+    val sparkContext = new SparkContext(getSparkConf("Hello RDD"))
 
     val linesRDD = sparkContext.textFile(args(0))
     val partitionedRDD = linesRDD.repartition(2)
@@ -31,16 +29,5 @@ object HelloRDD extends Serializable {
     logger.info(countRDD.collect().mkString(","))
 
     sparkContext.stop()
-  }
-
-  def getSparkConf: SparkConf = {
-    val sparkConf = new SparkConf()
-    val props: Properties = new Properties()
-    props.load(Source.fromFile("spark.conf").bufferedReader())
-    props.forEach((k, v) => {
-      sparkConf.set(k.toString, v.toString)
-    })
-
-    sparkConf
   }
 }

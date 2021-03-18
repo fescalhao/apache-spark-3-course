@@ -1,14 +1,11 @@
 package com.github.fescalhao.spark.example4
 
+import com.github.fescalhao.SparkConfigUtils.getSparkConf
 import org.apache.log4j.Logger
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
-import java.util.Properties
-import scala.io.Source
-
 object HelloSparkSQL extends Serializable {
-  lazy val logger: Logger = Logger.getLogger(getClass.getName)
+  @transient lazy val logger: Logger = Logger.getLogger(getClass.getName)
 
   def main(args: Array[String]): Unit = {
 
@@ -18,12 +15,12 @@ object HelloSparkSQL extends Serializable {
     }
 
     val spark = SparkSession.builder()
-      .config(getSparkConf)
+      .config(getSparkConf("Hello Spark SQL"))
       .getOrCreate()
 
     val sampleDF = spark.read
-      .option("header", true)
-      .option("inferSchema", true)
+      .option("header", "true")
+      .option("inferSchema", "true")
       .csv(args(0))
 
     sampleDF.createOrReplaceTempView("sample_table")
@@ -33,16 +30,5 @@ object HelloSparkSQL extends Serializable {
     logger.info(countDF.collect().mkString(","))
 
     spark.stop()
-  }
-
-  def getSparkConf: SparkConf = {
-    val sparkConf = new SparkConf()
-    val props = new Properties()
-    props.load(Source.fromFile("spark.conf").bufferedReader())
-    props.forEach((k, v) => {
-      sparkConf.set(k.toString, v.toString)
-    })
-
-    sparkConf
   }
 }
