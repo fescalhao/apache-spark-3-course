@@ -32,6 +32,7 @@ object DataSinkDemo extends Serializable {
     partitionedDF.groupBy(spark_partition_id()).count().show()
 
     val canceledFlightsByDistance = countCancelledFlightsByDistance(partitionedDF)
+    canceledFlightsByDistance.show(10)
 
     logger.info("Saving cancelled flights DataFrame")
     canceledFlightsByDistance.write

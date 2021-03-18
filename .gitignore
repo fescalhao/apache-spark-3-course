@@ -14,3 +14,5 @@ project/plugins/project/
 dist/*
 app-logs/
 dataSink/
+spark-warehouse/
+metastore_db/
