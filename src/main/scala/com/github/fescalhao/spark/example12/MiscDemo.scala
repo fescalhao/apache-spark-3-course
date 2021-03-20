@@ -29,6 +29,9 @@ object MiscDemo extends Serializable {
 
     logger.info("Adding a monotonically id (unique but not sequential)")
     logger.info("Adding a 'case' expression to correct the year column values")
+    logger.info("Adding a new column 'birthday'")
+    logger.info("Dropping unused columns and duplicates")
+    logger.info("Sorting by descending birthday order")
     val finalDF = rawDF.withColumn("id", monotonically_increasing_id())
       .withColumn("day", col("day").cast(IntegerType))
       .withColumn("month", col("month").cast(IntegerType))
