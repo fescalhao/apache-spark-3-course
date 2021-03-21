@@ -2,7 +2,8 @@ package com.github.fescalhao.spark.example13
 
 import com.github.fescalhao.SparkConfigUtils.getSparkConf
 import org.apache.log4j.Logger
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DateType, FloatType, IntegerType, StringType, StructField, StructType}
 
@@ -21,7 +22,7 @@ object AggDemo extends Serializable {
       StructField("StockCode", StringType),
       StructField("Description", StringType),
       StructField("Quantity", IntegerType),
-      StructField("InvoiceDate", StringType),
+      StructField("InvoiceDate", DateType),
       StructField("UnitPrice", FloatType),
       StructField("CustomerID", IntegerType),
       StructField("Country", StringType)
@@ -34,14 +35,15 @@ object AggDemo extends Serializable {
       .option("path", "data/invoices.csv")
       .option("treatEmptyValuesAsNulls", "true")
       .option("nullValue", null)
+      .option("dateFormat", "dd-MM-yyyy H.mm") // 14-08-2011 9.57
       .schema(invoicesSchema)
       .load()
 
-    logger.info("Caching invoices dataframe")
-    invoicesDF.cache()
+    logger.info("Repartitioning and Caching invoices dataframe")
+    val cachedInvoiceDF = invoicesDF.select("InvoiceNo", "Quantity", "InvoiceDate", "UnitPrice", "Country").cache()
 
     logger.info("Aggregation with Column Expression")
-    invoicesDF.select(
+    cachedInvoiceDF.select(
       count("*") as "TotalRecords",
       sum("Quantity") as "TotalQuantity",
       avg("UnitPrice") as "AvgPrice",
@@ -50,7 +52,7 @@ object AggDemo extends Serializable {
       .show()
 
     logger.info("Aggregation with SQL Expression")
-    invoicesDF.selectExpr(
+    cachedInvoiceDF.selectExpr(
       "count(1) as `TotalRecordsExpr`",
       "count(InvoiceNo) as `TotalStockCodeExpr`",
       "sum(Quantity) as `TotalQuantityExpr`"
@@ -58,14 +60,15 @@ object AggDemo extends Serializable {
       .show()
 
     logger.info("Aggregation with Column Expression and Group By")
-    invoicesDF.groupBy("Country", "InvoiceNo")
+    cachedInvoiceDF.groupBy("Country", "InvoiceNo")
       .agg(
         sum("Quantity") as "TotalQuantity",
         round(sum(expr("UnitPrice * Quantity")), 2) as "InvoiceValue"
-      ).show()
+      )
+      .show()
 
     logger.info("Aggregation with SQL Expression and TempView")
-    invoicesDF.createOrReplaceTempView("vw_Invoices")
+    cachedInvoiceDF.createOrReplaceTempView("vw_Invoices")
 
     spark.sql(
       """
@@ -78,7 +81,7 @@ object AggDemo extends Serializable {
       .show()
 
     logger.info("Exercise...")
-    invoicesDF.withColumn("InvoiceDate", to_date(regexp_replace(col("InvoiceDate"), "( \\d+.\\d+)", ""), "dd-MM-yyyy"))
+    val summaryInvoicesDF = cachedInvoiceDF
       .withColumn("WeekNumber", weekofyear(col("InvoiceDate")))
       .groupBy("Country", "WeekNumber")
       .agg(
@@ -86,7 +89,28 @@ object AggDemo extends Serializable {
         sum("Quantity") as "TotalQuantity",
         round(sum(expr("UnitPrice * Quantity")), 2) as "InvoiceValue"
       )
+
+    summaryInvoicesDF.coalesce(1)
+      .write
+      .format("parquet")
+      .mode(SaveMode.Overwrite)
+      .option("path", "dataSink/parquet/")
+      .save()
+
+    summaryInvoicesDF.sort("Country", "WeekNumber").show()
+
+    val runningTotalWindow = Window
+      .partitionBy("Country")
+      .orderBy("WeekNumber")
+      .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+    summaryInvoicesDF.withColumn("RunningTotal",
+      round(sum("InvoiceValue").over(runningTotalWindow), 2)
+    )
       .show()
+
+    logger.info("Cleaning invoice dataframe cache...")
+    cachedInvoiceDF.unpersist()
 
     logger.info("Stopping Spark...")
     spark.stop()
